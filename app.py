@@ -17,30 +17,33 @@ if st.button("Start Conversion"):
         st.info("Downloading...")
 
         try:
+            common_opts = {
+                'outtmpl': '%(title)s.%(ext)s',
+                'prefer_ffmpeg': True,
+                'ffmpeg_location': '/usr/bin',
+                'http_headers': {  # 👈 Important fix for 403 errors
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                                  '(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
+                }
+            }
+
             if format_option == "MP3":
                 ydl_opts = {
+                    **common_opts,
                     'format': 'bestaudio/best',
-                    'outtmpl': '%(title)s.%(ext)s',
                     'postprocessors': [{
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
                         'preferredquality': '192',
                     }],
-                    'postprocessor_args': [
-                        '-ar', '44100',   # set sample rate
-                        '-ac', '2'        # set audio channels
-                    ],
-                    'prefer_ffmpeg': True,
-                    'ffmpeg_location': '/usr/bin',  # Streamlit Cloud ffmpeg path
+                    'postprocessor_args': ['-ar', '44100', '-ac', '2'],
                 }
 
             else:  # MP4
                 ydl_opts = {
+                    **common_opts,
                     'format': 'bestvideo+bestaudio/best',
-                    'outtmpl': '%(title)s.%(ext)s',
                     'merge_output_format': 'mp4',
-                    'prefer_ffmpeg': True,
-                    'ffmpeg_location': '/usr/bin',
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -64,4 +67,4 @@ if st.button("Start Conversion"):
         except Exception as e:
             st.error(f"Error: {e}")
     else:
-        st.warning("Please enter a valid YouTube URL.")
+        st.warni
