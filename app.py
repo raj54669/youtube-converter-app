@@ -4,20 +4,34 @@ import tempfile
 import os
 
 # -----------------------------
-# Download function using yt-dlp
+# Download function with progress
 # -----------------------------
 def download_video(url, format_choice):
-    # Create a temporary file for download
+    # Create a temporary file
     suffix = ".mp3" if format_choice == "MP3" else ".mp4"
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     file_path = temp_file.name
     temp_file.close()
 
+    progress_placeholder = st.empty()
+
+    # Custom progress hook
+    def progress_hook(d):
+        if d['status'] == 'downloading':
+            percent = d.get('_percent_str', '0%')
+            speed = d.get('_speed_str', '0 KB/s')
+            eta = d.get('_eta_str', '0s')
+            progress_placeholder.info(f"Downloading... {percent} at {speed}, ETA: {eta}")
+        elif d['status'] == 'finished':
+            progress_placeholder.success("Download finished, processing...")
+
     # yt-dlp options
     ydl_opts = {
         'outtmpl': file_path,
         'format': 'bestaudio/best' if format_choice == "MP3" else 'bestvideo+bestaudio/best',
+        'noplaylist': True,  # ✅ Important: only single video
         'quiet': True,
+        'progress_hooks': [progress_hook],
     }
 
     # Add postprocessing for MP3
@@ -56,8 +70,7 @@ def main():
             st.error("Please enter a valid YouTube URL")
         else:
             try:
-                with st.spinner("Downloading..."):
-                    file_path, title, description, thumbnail_url = download_video(url, format_choice)
+                file_path, title, description, thumbnail_url = download_video(url, format_choice)
 
                 # Show video info
                 st.success("Download completed!")
@@ -70,7 +83,7 @@ def main():
 
                 # Provide download button
                 with open(file_path, "rb") as f:
-                    btn = st.download_button(
+                    st.download_button(
                         label=f"⬇️ Download {format_choice}",
                         data=f,
                         file_name=os.path.basename(file_path),
