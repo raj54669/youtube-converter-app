@@ -5,3 +5,7 @@ requests==2.28.1
 Pillow==8.2.0
 ffmpeg-python==4.3.1
 pydub==0.25.1
+markdown-it-py==2.0.0
+pygments==2.19.1
+rich==13.3.0
+mdurl==0.1.2
