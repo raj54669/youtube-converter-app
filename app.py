@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
 import yt_dlp
+import io
 
 def download_youtube(url, format_option):
     ydl_opts = {
@@ -29,15 +30,21 @@ if st.button("Start Conversion"):
             try:
                 stream_url, title = download_youtube(url, format_option)
 
-                # Get file content into memory
+                # Download file into memory buffer
                 response = requests.get(stream_url, stream=True)
+                buffer = io.BytesIO()
+                for chunk in response.iter_content(chunk_size=1024*1024):  # download in 1MB chunks
+                    if chunk:
+                        buffer.write(chunk)
+                buffer.seek(0)
+
                 filename = f"{title}.{ 'mp4' if format_option == 'MP4' else 'mp3'}"
 
                 st.success("✅ Download ready!")
 
                 st.download_button(
                     label="⬇️ Download File",
-                    data=response.content,
+                    data=buffer,
                     file_name=filename,
                     mime="audio/mpeg" if format_option=="MP3" else "video/mp4"
                 )
