@@ -8,6 +8,13 @@ st.title("🎬 YouTube Video & Audio Converter")
 
 url = st.text_input("Enter YouTube URL")
 format_choice = st.radio("Select format", ("mp4", "mp3"))
+
+# Show quality options based on format
+if format_choice == "mp4":
+    quality_choice = st.selectbox("Select video quality", ["360p", "480p", "720p", "1080p", "best"])
+else:
+    quality_choice = st.selectbox("Select audio quality", ["128 kbps", "192 kbps", "320 kbps"])
+
 start_button = st.button("Start Conversion")
 
 output_path = Path("downloads")
@@ -18,7 +25,6 @@ if start_button and url:
 
     try:
         file_template = str(output_path / '%(title)s.%(ext)s')
-
         cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
 
         base_opts = {
@@ -34,29 +40,37 @@ if start_button and url:
             },
         }
 
-        # First, probe available formats
-        with yt_dlp.YoutubeDL(base_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            formats = info_dict.get("formats", [])
-        
-        # Pick the right format dynamically
-        if format_choice == "mp3":
+        # Decide format string based on user choice
+        if format_choice == "mp4":
+            quality_map = {
+                "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]",
+                "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
+                "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+                "best": "bestvideo+bestaudio/best"
+            }
+            ydl_opts = {
+                **base_opts,
+                "format": quality_map[quality_choice],
+                "merge_output_format": "mp4",
+                "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
+            }
+
+        else:  # mp3
+            quality_map = {
+                "128 kbps": "128",
+                "192 kbps": "192",
+                "320 kbps": "320",
+            }
             ydl_opts = {
                 **base_opts,
                 "format": "bestaudio/best",
                 "postprocessors": [
-                    {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"},
+                    {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": quality_map[quality_choice]},
                     {"key": "FFmpegMetadata"},
                     {"key": "EmbedThumbnail"},
                 ],
                 "writethumbnail": True,
-            }
-        else:
-            ydl_opts = {
-                **base_opts,
-                "format": "bestvideo+bestaudio/best",
-                "merge_output_format": "mp4",
-                "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
             }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
