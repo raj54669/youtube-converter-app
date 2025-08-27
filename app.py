@@ -1,98 +1,67 @@
 import streamlit as st
 import yt_dlp
-import tempfile
 import os
 
-# -----------------------------
-# Download function with progress
-# -----------------------------
-def download_video(url, format_choice):
-    # Create a temporary file
-    suffix = ".mp3" if format_choice == "MP3" else ".mp4"
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    file_path = temp_file.name
-    temp_file.close()
+st.set_page_config(page_title="YouTube Video & Audio Converter", page_icon="🎬", layout="centered")
 
-    progress_placeholder = st.empty()
+st.title("🎬 YouTube Video & Audio Converter")
 
-    # Custom progress hook
-    def progress_hook(d):
-        if d['status'] == 'downloading':
-            percent = d.get('_percent_str', '0%')
-            speed = d.get('_speed_str', '0 KB/s')
-            eta = d.get('_eta_str', '0s')
-            progress_placeholder.info(f"Downloading... {percent} at {speed}, ETA: {eta}")
-        elif d['status'] == 'finished':
-            progress_placeholder.success("Download finished, processing...")
+# Input URL
+url = st.text_input("Enter YouTube URL")
 
-    # yt-dlp options
-    ydl_opts = {
-        'outtmpl': file_path,
-        'format': 'bestaudio/best' if format_choice == "MP3" else 'bestvideo+bestaudio/best',
-        'noplaylist': True,  # ✅ Important: only single video
-        'quiet': True,
-        'progress_hooks': [progress_hook],
-    }
+# Select format
+format_option = st.radio("Select format", ["MP4", "MP3"])
 
-    # Add postprocessing for MP3
-    if format_choice == "MP3":
-        ydl_opts.update({
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }]
-        })
+if st.button("Start Conversion"):
+    if url:
+        st.info("Downloading...")
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        title = info.get('title', 'Unknown Title')
-        description = info.get('description', '')
-        thumbnail_url = info.get('thumbnail', '')
+        try:
+            if format_option == "MP3":
+                ydl_opts = {
+                    'format': 'bestaudio/best',
+                    'outtmpl': '%(title)s.%(ext)s',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'postprocessor_args': [
+                        '-ar', '44100',   # set sample rate
+                        '-ac', '2'        # set audio channels
+                    ],
+                    'prefer_ffmpeg': True,
+                    'ffmpeg_location': '/usr/bin',  # Streamlit Cloud ffmpeg path
+                }
 
-    return file_path, title, description, thumbnail_url
+            else:  # MP4
+                ydl_opts = {
+                    'format': 'bestvideo+bestaudio/best',
+                    'outtmpl': '%(title)s.%(ext)s',
+                    'merge_output_format': 'mp4',
+                    'prefer_ffmpeg': True,
+                    'ffmpeg_location': '/usr/bin',
+                }
 
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
 
-# -----------------------------
-# Streamlit App UI
-# -----------------------------
-def main():
-    st.set_page_config(page_title="YouTube Converter", page_icon="🎥", layout="centered")
+                if format_option == "MP3":
+                    filename = filename.rsplit(".", 1)[0] + ".mp3"
+                else:
+                    filename = filename.rsplit(".", 1)[0] + ".mp4"
 
-    st.title("🎬 YouTube Video & Audio Converter")
-
-    url = st.text_input("Enter YouTube URL")
-
-    format_choice = st.radio("Select format", ("MP4", "MP3"))
-
-    if st.button("Start Conversion"):
-        if not url:
-            st.error("Please enter a valid YouTube URL")
-        else:
-            try:
-                file_path, title, description, thumbnail_url = download_video(url, format_choice)
-
-                # Show video info
-                st.success("Download completed!")
-                st.subheader(title)
-
-                if thumbnail_url:
-                    st.image(thumbnail_url, use_column_width=True)
-
-                st.write(description)
-
-                # Provide download button
-                with open(file_path, "rb") as f:
+                st.success("Download finished! ✅")
+                with open(filename, "rb") as f:
                     st.download_button(
-                        label=f"⬇️ Download {format_choice}",
+                        label=f"⬇️ Download {format_option}",
                         data=f,
-                        file_name=os.path.basename(file_path),
-                        mime="audio/mpeg" if format_choice == "MP3" else "video/mp4"
+                        file_name=os.path.basename(filename),
+                        mime="audio/mpeg" if format_option == "MP3" else "video/mp4"
                     )
 
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-
-if __name__ == "__main__":
-    main()
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.warning("Please enter a valid YouTube URL.")
