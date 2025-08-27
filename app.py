@@ -2,66 +2,58 @@ import streamlit as st
 import yt_dlp
 import os
 
-def download_youtube(url, format_option):
-    """Download and convert YouTube video/audio with metadata + thumbnail."""
-    filename = "output.%(ext)s"
-    ydl_opts = {
-        "format": "bestaudio/best" if format_option == "MP3" else "bestvideo+bestaudio/best",
-        "outtmpl": filename,
-        "noplaylist": True,
-        "writethumbnail": True,  # download thumbnail
-    }
-
-    if format_option == "MP3":
-        ydl_opts["postprocessors"] = [
-            {  # convert to mp3
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            },
-            {  # embed thumbnail into mp3
-                "key": "EmbedThumbnail"
-            },
-            {  # write metadata (title, artist, etc.)
-                "key": "FFmpegMetadata"
-            }
-        ]
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        title = info.get("title", "youtube_video")
-        ext = "mp3" if format_option == "MP3" else "mp4"
-        filename = f"output.{ext}"
-
-    return filename, title, ext
-
-
-# ---------------- Streamlit UI ----------------
+st.set_page_config(page_title="YouTube Converter", page_icon="🎬", layout="centered")
 
 st.title("🎬 YouTube Video & Audio Converter")
 
 url = st.text_input("Enter YouTube URL")
-format_option = st.radio("Select format", ("MP4", "MP3"))
+format_choice = st.radio("Select format", ("MP4", "MP3"))
+start = st.button("Start Conversion")
 
-if st.button("Start Conversion"):
-    if url:
-        with st.spinner("Downloading & processing..."):
-            try:
-                filename, title, ext = download_youtube(url, format_option)
+if start and url:
+    st.info("Processing... Please wait!")
 
-                with open(filename, "rb") as f:
-                    st.download_button(
-                        label="⬇️ Download File",
-                        data=f,
-                        file_name=f"{title}.{ext}",
-                        mime="audio/mpeg" if ext == "mp3" else "video/mp4",
-                    )
+    try:
+        file_name = "output.mp3" if format_choice == "MP3" else "output.mp4"
+        if os.path.exists(file_name):
+            os.remove(file_name)
 
-                os.remove(filename)  # clean temp file
+        # ✅ Try to use cookies if available
+        cookie_file = "cookies.txt" if os.path.exists("cookies.txt") else None
 
-                st.success("✅ File ready for download!")
+        ydl_opts = {
+            "outtmpl": file_name,
+            "noplaylist": True,
+            "writethumbnail": True,
+            "format": "bestaudio/best" if format_choice == "MP3" else "bestvideo+bestaudio/best",
+        }
 
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
-    else:
-        st.warning("Please enter a YouTube URL")
+        if cookie_file:
+            ydl_opts["cookiefile"] = cookie_file   # ✅ Use cookies.txt automatically
+
+        if format_choice == "MP3":
+            ydl_opts["postprocessors"] = [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                },
+                {"key": "EmbedThumbnail"},
+                {"key": "FFmpegMetadata"},
+            ]
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        st.success("✅ Download complete!")
+
+        with open(file_name, "rb") as f:
+            st.download_button(
+                label=f"⬇️ Download {format_choice}",
+                data=f,
+                file_name=file_name,
+                mime="audio/mpeg" if format_choice == "MP3" else "video/mp4",
+            )
+
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
