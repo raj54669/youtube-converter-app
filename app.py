@@ -1,54 +1,48 @@
+import requests
 import streamlit as st
 import yt_dlp
 
-st.set_page_config(page_title="YouTube Converter", page_icon="🎬", layout="centered")
+def download_youtube(url, format_option):
+    ydl_opts = {
+        "format": "bestaudio/best" if format_option == "MP3" else "bestvideo+bestaudio/best",
+        "quiet": True,
+        "noplaylist": True,
+    }
 
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        stream_url = info["url"]
+        title = info.get("title", "youtube_video")
+
+    return stream_url, title
+
+
+# Streamlit app
 st.title("🎬 YouTube Video & Audio Converter")
 
 url = st.text_input("Enter YouTube URL")
-
 format_option = st.radio("Select format", ("MP4", "MP3"))
 
-if st.button("Get Download Link") and url:
-    st.info("Fetching video info...")
+if st.button("Start Conversion"):
+    if url:
+        with st.spinner("Fetching download link..."):
+            try:
+                stream_url, title = download_youtube(url, format_option)
 
-    try:
-        ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True}
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+                # Get file content into memory
+                response = requests.get(stream_url, stream=True)
+                filename = f"{title}.{ 'mp4' if format_option == 'MP4' else 'mp3'}"
 
-        title = info.get("title", "Unknown Title")
-        thumbnail = info.get("thumbnail")
-        uploader = info.get("uploader", "Unknown Channel")
-        duration = info.get("duration", 0)
+                st.success("✅ Download ready!")
 
-        # choose stream url
-        if format_option == "MP4":
-            stream_url = info["url"]  # direct video+audio stream
-        else:  # MP3 case → best audio-only stream
-            audio_format = next((f for f in info["formats"] if f.get("acodec") != "none"), None)
-            stream_url = audio_format["url"] if audio_format else None
+                st.download_button(
+                    label="⬇️ Download File",
+                    data=response.content,
+                    file_name=filename,
+                    mime="audio/mpeg" if format_option=="MP3" else "video/mp4"
+                )
 
-        # Show metadata
-        st.subheader(title)
-        st.write(f"Uploader: **{uploader}**")
-        st.write(f"Duration: {duration // 60}:{duration % 60:02d}")
-        if thumbnail:
-            st.image(thumbnail, width=300)
-
-        # Show direct download link
-        if stream_url:
-            st.success("✅ Direct download link ready!")
-            st.markdown(f"[Click here to download]({stream_url})", unsafe_allow_html=True)
-        else:
-            st.error("Could not get stream URL.")
-
-        # Show yt-dlp local command for proper MP3 with metadata
-        st.subheader("Convert to MP3 with metadata & thumbnail (Run locally):")
-        st.code(
-            f'yt-dlp -x --audio-format mp3 --embed-thumbnail --add-metadata "{url}"',
-            language="bash"
-        )
-
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
+            except Exception as e:
+                st.error(f"Error: {e}")
+    else:
+        st.warning("Please enter a YouTube URL")
