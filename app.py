@@ -7,6 +7,7 @@ from PIL import Image
 import shutil
 import os
 import tempfile
+import ffmpeg
 
 # Function to get video metadata (title, description, thumbnail)
 def get_video_metadata(url):
@@ -26,10 +27,14 @@ def download_video(url, format_choice):
     
     if format_choice == "MP4":
         stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-        file_path = stream.download(filename=f"{yt.title}.mp4")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
+            file_path = temp_file.name
+            stream.download(filename=file_path)
     elif format_choice == "MP3":
         stream = yt.streams.filter(only_audio=True).first()
-        file_path = stream.download(filename=f"{yt.title}.mp3")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+            file_path = temp_file.name
+            stream.download(filename=file_path)
     
     return file_path, title, description, thumbnail_url
 
@@ -37,9 +42,11 @@ def download_video(url, format_choice):
 def embed_metadata_and_thumbnail(mp4_file_path, title, description, thumbnail_url):
     try:
         response = requests.get(thumbnail_url)
-        img = Image.open(BytesIO(response.content))
-        img.save("thumbnail.jpg")
+        if response.status_code == 200:
+            img = Image.open(BytesIO(response.content))
+            img.save("thumbnail.jpg")
 
+        # Process the video file and add metadata
         clip = VideoFileClip(mp4_file_path)
         clip.write_videofile("output_with_metadata.mp4", codec="libx264", audio_codec="aac", metadata={"title": title, "description": description})
 
