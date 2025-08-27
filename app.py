@@ -19,13 +19,11 @@ if start_button and url:
     try:
         file_template = str(output_path / '%(title)s.%(ext)s')
 
-        # Use cookies.txt if exists, else try browser-cookie3 (Google Chrome)
         cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
 
-        ydl_opts = {
+        base_opts = {
             "outtmpl": file_template,
             "noplaylist": True,
-            "merge_output_format": format_choice,
             "cookiefile": cookies_file,
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -34,13 +32,17 @@ if start_button and url:
                 "Accept": "*/*",
                 "Accept-Language": "en-US,en;q=0.9",
             },
-            "extractor_args": {
-                "youtube": {"player_client": ["android"]}
-            }
         }
 
+        # First, probe available formats
+        with yt_dlp.YoutubeDL(base_opts) as ydl:
+            info_dict = ydl.extract_info(url, download=False)
+            formats = info_dict.get("formats", [])
+        
+        # Pick the right format dynamically
         if format_choice == "mp3":
-            ydl_opts.update({
+            ydl_opts = {
+                **base_opts,
                 "format": "bestaudio/best",
                 "postprocessors": [
                     {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"},
@@ -48,12 +50,14 @@ if start_button and url:
                     {"key": "EmbedThumbnail"},
                 ],
                 "writethumbnail": True,
-            })
+            }
         else:
-            ydl_opts.update({
+            ydl_opts = {
+                **base_opts,
                 "format": "bestvideo+bestaudio/best",
-                "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}]
-            })
+                "merge_output_format": "mp4",
+                "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
+            }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
