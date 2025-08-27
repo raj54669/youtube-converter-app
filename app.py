@@ -3,20 +3,64 @@ import yt_dlp
 from pathlib import Path
 import os
 
+# Page settings
 st.set_page_config(page_title="YouTube Converter", page_icon="🎬", layout="centered")
-st.title("🎬 YouTube Video & Audio Converter")
 
-url = st.text_input("Enter YouTube URL")
-format_choice = st.radio("Select format", ("mp4", "mp3"))
+# Custom CSS for styling
+st.markdown("""
+    <style>
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: #4A90E2;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 15px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .stDownloadButton > button {
+            width: 100%;
+            font-size: 1rem;
+            padding: 12px;
+            border-radius: 10px;
+            background-color: #4A90E2 !important;
+            color: white !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Show quality options based on format
-if format_choice == "mp4":
-    quality_choice = st.selectbox("Select video quality", ["360p", "480p", "720p", "1080p", "best"])
-else:
-    quality_choice = st.selectbox("Select audio quality", ["128 kbps", "192 kbps", "320 kbps"])
+# Title & subtitle
+st.markdown('<div class="title">🎬 YouTube Video & Audio Converter</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Convert YouTube videos into high-quality MP4 or MP3 with thumbnails & metadata</div>', unsafe_allow_html=True)
 
-start_button = st.button("Start Conversion")
+# Input section
+with st.container():
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
+    url = st.text_input("🔗 Enter YouTube URL")
+
+    format_choice = st.radio("🎚 Select format", ("🎬 MP4 (Video)", "🎵 MP3 (Audio)"))
+
+    if "MP4" in format_choice:
+        quality_choice = st.selectbox("📹 Select video quality", ["360p", "480p", "720p", "1080p", "Best"])
+    else:
+        quality_choice = st.selectbox("🎵 Select audio quality", ["128 kbps", "192 kbps", "320 kbps"])
+
+    start_button = st.button("🚀 Start Conversion")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Output path
 output_path = Path("downloads")
 output_path.mkdir(exist_ok=True)
 
@@ -40,8 +84,8 @@ if start_button and url:
             },
         }
 
-        # Decide format string based on user choice
-        if format_choice == "mp4":
+        # Decide format string
+        if "MP4" in format_choice:
             quality_map = {
                 "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]",
                 "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
@@ -56,7 +100,7 @@ if start_button and url:
                 "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
             }
 
-        else:  # mp3
+        else:  # MP3
             quality_map = {
                 "128 kbps": "128",
                 "192 kbps": "192",
@@ -76,12 +120,13 @@ if start_button and url:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-            if format_choice == "mp3":
+            if "MP3" in format_choice:
                 filename = filename.rsplit(".", 1)[0] + ".mp3"
             else:
                 filename = filename.rsplit(".", 1)[0] + ".mp4"
 
         st.success("✅ Conversion complete!")
+
         with open(filename, "rb") as f:
             st.download_button("⬇️ Download File", f, file_name=os.path.basename(filename))
 
