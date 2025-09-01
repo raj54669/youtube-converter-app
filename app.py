@@ -104,7 +104,9 @@ if start_button and url:
                 **base_opts,
                 "format": quality_map[quality_choice],
                 "merge_output_format": "mp4",
-                "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
+                "postprocessors": [
+                    {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}
+                ],
             }
 
         else:  # MP3
@@ -117,3 +119,26 @@ if start_button and url:
                 **base_opts,
                 "format": "bestaudio/best",
                 "postprocessors": [
+                    {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": quality_map[quality_choice]},
+                    {"key": "FFmpegMetadata"},
+                    {"key": "EmbedThumbnail"},
+                ],
+                "writethumbnail": True,
+            }
+
+        # Run yt-dlp
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+            if "MP3" in format_choice:
+                filename = filename.rsplit(".", 1)[0] + ".mp3"
+            else:
+                filename = filename.rsplit(".", 1)[0] + ".mp4"
+
+        st.success("✅ Conversion complete!")
+
+        with open(filename, "rb") as f:
+            st.download_button("⬇️ Download File", f.read(), file_name=os.path.basename(filename))
+
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
