@@ -6,7 +6,7 @@ import os
 # Page settings
 st.set_page_config(page_title="YouTube Converter", page_icon="🎬", layout="centered")
 
-# Custom CSS for styling
+# Custom CSS
 st.markdown("""
     <style>
         .title {
@@ -68,14 +68,18 @@ if start_button and url:
     st.info("⏳ Processing... Please wait!")
 
     try:
+        # Normalize youtu.be links
+        if "youtu.be/" in url:
+            url = url.replace("https://youtu.be/", "https://www.youtube.com/watch?v=")
+
         file_template = str(output_path / '%(title)s.%(ext)s')
         cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
 
         base_opts = {
             "outtmpl": file_template,
             "noplaylist": True,
-            "cookies": cookies_file,  # ✅ FIXED key name
-            "http_headers": {         # ✅ More realistic headers
+            "cookies": cookies_file,  # ✅ Correct key
+            "http_headers": {         # ✅ Strong headers
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                               "AppleWebKit/537.36 (KHTML, like Gecko) "
                               "Chrome/115.0 Safari/537.36",
@@ -83,6 +87,9 @@ if start_button and url:
                 "Accept-Language": "en-US,en;q=0.9",
                 "Sec-Fetch-Mode": "navigate",
             },
+            "extractor_args": {       # ✅ Helps bypass 403 in some cases
+                "youtube": {"player_client": ["android", "web"]}
+            }
         }
 
         # Decide format string
