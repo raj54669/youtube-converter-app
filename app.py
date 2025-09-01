@@ -74,13 +74,14 @@ if start_button and url:
         base_opts = {
             "outtmpl": file_template,
             "noplaylist": True,
-            "cookiefile": cookies_file,
-            "http_headers": {
+            "cookies": cookies_file,  # ✅ FIXED key name
+            "http_headers": {         # ✅ More realistic headers
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                               "AppleWebKit/537.36 (KHTML, like Gecko) "
                               "Chrome/115.0 Safari/537.36",
-                "Accept": "*/*",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9",
+                "Sec-Fetch-Mode": "navigate",
             },
         }
 
@@ -91,7 +92,7 @@ if start_button and url:
                 "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
                 "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]",
                 "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-                "best": "bestvideo+bestaudio/best"
+                "Best": "bestvideo+bestaudio/best"
             }
             ydl_opts = {
                 **base_opts,
@@ -128,7 +129,7 @@ if start_button and url:
         st.success("✅ Conversion complete!")
 
         with open(filename, "rb") as f:
-            st.download_button("⬇️ Download File", f, file_name=os.path.basename(filename))
+            st.download_button("⬇️ Download File", f.read(), file_name=os.path.basename(filename))  # ✅ fixed .read()
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
