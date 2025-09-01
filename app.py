@@ -78,17 +78,16 @@ if start_button and url:
         base_opts = {
             "outtmpl": file_template,
             "noplaylist": True,
-            "cookies": cookies_file,  # ✅ Correct key
-            "http_headers": {         # ✅ Strong headers
+            "cookies": cookies_file,   # ✅ use your cookies.txt
+            "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                               "AppleWebKit/537.36 (KHTML, like Gecko) "
                               "Chrome/115.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9",
-                "Sec-Fetch-Mode": "navigate",
             },
-            "extractor_args": {       # ✅ Helps bypass 403 in some cases
-                "youtube": {"player_client": ["android", "web"]}
+            "extractor_args": {
+                "youtube": {"player_client": ["web"]}  # ✅ force web client only
             }
         }
 
@@ -118,25 +117,3 @@ if start_button and url:
                 **base_opts,
                 "format": "bestaudio/best",
                 "postprocessors": [
-                    {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": quality_map[quality_choice]},
-                    {"key": "FFmpegMetadata"},
-                    {"key": "EmbedThumbnail"},
-                ],
-                "writethumbnail": True,
-            }
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            if "MP3" in format_choice:
-                filename = filename.rsplit(".", 1)[0] + ".mp3"
-            else:
-                filename = filename.rsplit(".", 1)[0] + ".mp4"
-
-        st.success("✅ Conversion complete!")
-
-        with open(filename, "rb") as f:
-            st.download_button("⬇️ Download File", f.read(), file_name=os.path.basename(filename))  # ✅ fixed .read()
-
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
